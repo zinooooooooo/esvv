@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import StaffSidebar from "./StaffSidebar";
-import DataTable from "../staff/StaffTable";
+import DataTable from "./StaffTable";
 import TodaysAppointments from "./TodaysAppointments";
 import logo from "../assets/logo.png";
 import { createClient } from "@supabase/supabase-js";
