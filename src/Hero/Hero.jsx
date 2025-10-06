@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import senior from '/src/assets/senior.jpg';
-import pwd from '/src/assets/pwd.jpeg';
-import solo from '/src/assets/solo.png';
+import senior from '../assets/senior.jpg';
+import pwd from '../assets/pwd.jpeg';
+import solo from '../assets/solo.png';
 
 const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);

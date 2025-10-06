@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IoArrowBack, IoPersonOutline, IoCallOutline, IoMailOutline, IoLocationOutline, IoCardOutline, IoDocumentTextOutline, IoCloudUploadOutline, IoImageOutline, IoAlert } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import logo from "/src/assets/logo.png";
+import logo from "../assets/logo.png";
 import { supabase } from "../supabase";
 
 const FileUpload = ({ label, file, onFileChange, icon: Icon }) => {
