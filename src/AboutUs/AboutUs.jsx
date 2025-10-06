@@ -1,13 +1,17 @@
 import React from 'react';
+import heroImage from '../assets/hero.png';
+import childrenImage from '../assets/children.jpg';
+import elderlyImage from '../assets/Elderly.jpg';
+import fourPImage from '../assets/4p.jpg';
 
 const AboutUs = () => {
   
 
   const galleryImages = [
-    { id: 1, path: "src/assets/hero.png", alt: "DSWD workers providing relief" },
-    { id: 2, path: "src/assets/children.jpg", alt: "DSWD Children's assistance" },
-    { id: 3, path: "src/assets/Elderly.jpg", alt: "DSWD with elderly's" },
-    { id: 4, path: "src/assets/4p.jpg", alt: "DSWD aid distribution" },
+    { id: 1, path: heroImage, alt: "DSWD workers providing relief" },
+    { id: 2, path: childrenImage, alt: "DSWD Children's assistance" },
+    { id: 3, path: elderlyImage, alt: "DSWD with elderly's" },
+    { id: 4, path: fourPImage, alt: "DSWD aid distribution" },
   ];
 
   return (
