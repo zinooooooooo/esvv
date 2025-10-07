@@ -8,11 +8,11 @@ import Faqs from './Faqs/Faqs';
 import Appointment from './Appointment/appointment';
 import Signup from './Navbar/Signup'; 
 import AdminDashboard from './admindash/AdminDashboard';
-import StaffDashboard from './staff/StaffDashboard';
+import StaffDashboard from './Staff/StaffDashboard';
 import AdminDocuments from './admindash/AdminDocuments';
 import DocuManagement from './admindash/DocuManagement';
 import AuditLogs from './admindash/AuditLogs';
-import StaffPage from './staff/StaffPage';
+import StaffPage from './Staff/StaffPage';
 import StaffManagement from './admindash/StaffManagement';
 
 function App() {
