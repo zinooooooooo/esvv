@@ -57,6 +57,7 @@ const Signup = () => {
   const [backIdFile, setBackIdFile] = useState(null);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const barangayList = [
     "Bantaoay",
@@ -122,6 +123,9 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    
+    // Prevent double submission
+    if (submitting) return;
 
     const { email, confirmEmail, password, confirmPassword, firstName, lastName, phone, gender, barangay, idType, idNumber } = formData;
 
@@ -198,6 +202,7 @@ const Signup = () => {
       return;
     }
 
+    setSubmitting(true);
     try {
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email,
@@ -284,6 +289,8 @@ const Signup = () => {
       console.error("Error:", err.message);
       setError(err.message);
       setShowModal(true);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -604,12 +611,26 @@ const Signup = () => {
 
           <button
             type="submit"
-            className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-medium hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 active:scale-[0.98] flex items-center justify-center"
+            disabled={submitting}
+            className={`w-full mt-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center ${
+              submitting 
+                ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'
+            }`}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-            Create Account
+            {submitting ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                Creating Account...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Create Account
+              </>
+            )}
           </button>
         </form>
 

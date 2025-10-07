@@ -55,6 +55,7 @@ export default function Navbar() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -132,6 +133,9 @@ export default function Navbar() {
   };
 
   const handleLogin = async () => {
+    // Prevent double submission
+    if (submitting) return;
+    
     if (password.length < 8) {
       setModal({
         isOpen: true,
@@ -142,24 +146,32 @@ export default function Navbar() {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      alert("Login failed: " + error.message);
-      return;
-    }
-
-    const user = data.user;
-    // Mark that this tab initiated a fresh login to avoid kiosk auto-login
+    setSubmitting(true);
     try {
-      sessionStorage.setItem('explicitLoginThisTab', '1');
-    } catch (_) {}
-    setUser(user);
-    fetchUserProfile(user.id, true);
-    setShowLogin(false);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert("Login failed: " + error.message);
+        return;
+      }
+
+      const user = data.user;
+      // Mark that this tab initiated a fresh login to avoid kiosk auto-login
+      try {
+        sessionStorage.setItem('explicitLoginThisTab', '1');
+      } catch (_) {}
+      setUser(user);
+      fetchUserProfile(user.id, true);
+      setShowLogin(false);
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Login failed: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const fetchAppointments = async () => {
@@ -847,9 +859,21 @@ export default function Navbar() {
 
               <button
                 onClick={handleLogin}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 rounded-xl font-medium hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                disabled={submitting}
+                className={`w-full py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  submitting 
+                    ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                    : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'
+                }`}
               >
-                Sign In
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
               </button>
 
               <div className="relative">

@@ -163,6 +163,7 @@ const StaffCard = ({ staff, onEdit, onDelete, isAdmin }) => {
 const StaffPage = () => {
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '' });
@@ -306,10 +307,14 @@ const StaffPage = () => {
   };
 
   const handleSubmit = async () => {
+    // Prevent double submission
+    if (submitting) return;
+    
     if (!formData.name || !formData.position || !formData.hierarchy) {
       return showModal('error', 'Validation Error', 'Please fill in all required fields');
     }
 
+    setSubmitting(true);
     try {
       let photoUrl = null;
       
@@ -353,6 +358,8 @@ const StaffPage = () => {
     } catch (error) {
       console.error('Error saving staff member:', error);
       showModal('error', 'Error', 'Failed to save staff member');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -607,9 +614,21 @@ const StaffPage = () => {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
+                    disabled={submitting}
+                    className={`px-8 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
+                      submitting 
+                        ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                    }`}
                   >
-                    {editingStaff ? 'Update Staff' : 'Add Staff'}
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                        {editingStaff ? 'Updating...' : 'Adding...'}
+                      </>
+                    ) : (
+                      editingStaff ? 'Update Staff' : 'Add Staff'
+                    )}
                   </button>
                 </div>
               </div>

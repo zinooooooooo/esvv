@@ -88,6 +88,7 @@ const FileUpload = ({ label, file, onFileChange, icon: Icon }) => {
 const Appointment = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState("");
   const [appointee, setAppointee] = useState("");
   const [selectedService, setSelectedService] = useState("");
@@ -254,6 +255,9 @@ const Appointment = () => {
   };
 
   const handleSubmit = async () => {
+    // Prevent double submission
+    if (submitting) return;
+    
     // Validate sector selection
     if (!selectedType) return showModal('error', 'Validation Error', 'Please select a sector.');
     
@@ -330,6 +334,7 @@ const Appointment = () => {
     const tableName = tableMap[selectedType];
     if (!tableName) return showModal('error', 'Error', 'Invalid sector type.');
   
+    setSubmitting(true);
     try {
       const userId = user.id;
       const timestamp = Date.now();
@@ -412,6 +417,8 @@ const Appointment = () => {
       }
     } catch (err) {
       showModal('error', 'Unexpected Error', 'Unexpected error: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -827,10 +834,24 @@ const Appointment = () => {
             <div className="flex flex-col items-center space-y-4">
               <button
                 onClick={handleSubmit}
-                className="w-full max-w-md py-5 px-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl flex items-center justify-center group"
+                disabled={submitting}
+                className={`w-full max-w-md py-5 px-8 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl flex items-center justify-center group ${
+                  submitting 
+                    ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105'
+                }`}
               >
-                <IoCheckmarkCircle className="mr-3 group-hover:rotate-12 transition-transform duration-300" size={24} />
-                Submit Appointment
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mr-3"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <IoCheckmarkCircle className="mr-3 group-hover:rotate-12 transition-transform duration-300" size={24} />
+                    Submit Appointment
+                  </>
+                )}
               </button>
               <p className="text-sm text-gray-500 text-center max-w-md">
                 By submitting this form, you agree to our terms and conditions. 
