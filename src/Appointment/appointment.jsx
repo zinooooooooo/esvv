@@ -835,7 +835,7 @@ const Appointment = () => {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className={`w-full max-w-md py-5 px-8 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl flex items-center justify-center group ${
+                className={`w-full max-w-md py-5 px-8 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl flex items-center justify-center group text-white ${
                   submitting 
                     ? 'bg-gray-400 cursor-not-allowed opacity-75' 
                     : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105'

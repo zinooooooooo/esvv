@@ -612,7 +612,7 @@ const Signup = () => {
           <button
             type="submit"
             disabled={submitting}
-            className={`w-full mt-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center ${
+            className={`w-full mt-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center text-white ${
               submitting 
                 ? 'bg-gray-400 cursor-not-allowed opacity-75' 
                 : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'

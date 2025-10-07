@@ -860,7 +860,7 @@ export default function Navbar() {
               <button
                 onClick={handleLogin}
                 disabled={submitting}
-                className={`w-full py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                className={`w-full py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-white ${
                   submitting 
                     ? 'bg-gray-400 cursor-not-allowed opacity-75' 
                     : 'bg-gradient-to-r from-blue-600 to-blue-800 hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]'

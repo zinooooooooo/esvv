@@ -615,7 +615,7 @@ const StaffPage = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={submitting}
-                    className={`px-8 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
+                    className={`px-8 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center text-white ${
                       submitting 
                         ? 'bg-gray-400 cursor-not-allowed opacity-75' 
                         : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
