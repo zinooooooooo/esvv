@@ -641,7 +641,7 @@ export default function Navbar() {
         <div className="max-w-screen-xl mx-auto px-4 flex items-center justify-between h-16">
           <div className="flex items-center">
             <img src={logo} alt="eSVMSWDO Logo" className="h-10" />
-            <span className="ml-2 text-lg font-bold text-gray-900">eSVSMWDO</span>
+            <span className="ml-2 text-lg font-bold text-gray-900">eSVMSWDO</span>
           </div>
 
    
