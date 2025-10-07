@@ -640,8 +640,8 @@ export default function Navbar() {
       <nav className={`fixed top-0 w-full bg-white/95 backdrop-blur-md z-[9999] transition-all duration-300 ${scrolled ? 'shadow-lg border-b border-gray-100' : 'shadow-sm'}`}>
         <div className="max-w-screen-xl mx-auto px-4 flex items-center justify-between h-16">
           <div className="flex items-center">
-            <img src={logo} alt="eSVMWDO Logo" className="h-10" />
-            <span className="ml-2 text-lg font-bold text-gray-900">eSVMWDO</span>
+            <img src={logo} alt="eSVMSWDO Logo" className="h-10" />
+            <span className="ml-2 text-lg font-bold text-gray-900">eSVSMWDO</span>
           </div>
 
    

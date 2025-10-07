@@ -19,7 +19,7 @@ const AboutUs = () => {
       <div className="max-w-7xl mx-auto px-4 py-16">
        
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-gray-900 tracking-tight">eSVMWDO</h1>
+          <h1 className="text-5xl font-bold text-gray-900 tracking-tight">eSVSMWDO</h1>
           <div className="w-24 h-1 bg-red-600 mx-auto mt-6"></div>
         </div>
         
