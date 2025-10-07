@@ -53,13 +53,17 @@ const Modal = ({ isOpen, onClose, type, title, message }) => {
 
 
 const FileUpload = ({ label, file, onFileChange, icon: Icon }) => {
+  const isExistingFile = file && file.isExisting;
+  
   return (
     <div className="space-y-3">
       <label className="flex text-sm font-bold text-gray-700 uppercase tracking-wide items-center">
         <Icon className="mr-2 text-indigo-600" size={16} />
         {label}
       </label>
-      <div className="relative border-2 border-dashed border-indigo-200 rounded-2xl p-8 text-center hover:border-indigo-400 transition-all duration-300 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 group cursor-pointer">
+      <div className={`relative border-2 border-dashed rounded-2xl p-8 text-center hover:border-indigo-400 transition-all duration-300 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 group cursor-pointer ${
+        isExistingFile ? 'border-green-300 bg-green-50/30' : 'border-indigo-200'
+      }`}>
         <input
           type="file"
           accept="image/*,.pdf"
@@ -68,16 +72,20 @@ const FileUpload = ({ label, file, onFileChange, icon: Icon }) => {
           style={{ zIndex: 10 }}
         />
         <div className="group-hover:scale-105 transition-transform duration-200 pointer-events-none">
-          <IoCloudUploadOutline className="mx-auto text-indigo-400 mb-3 group-hover:text-indigo-600 transition-colors" size={40} />
+          <IoCloudUploadOutline className={`mx-auto mb-3 group-hover:text-indigo-600 transition-colors ${
+            isExistingFile ? 'text-green-500' : 'text-indigo-400'
+          }`} size={40} />
           <p className="text-gray-700 font-medium">
             {file ? (
-              <span className="text-indigo-600">✓ {file.name}</span>
+              <span className={isExistingFile ? "text-green-600" : "text-indigo-600"}>
+                ✓ {file.name}
+              </span>
             ) : (
               "Click to upload or drag and drop"
             )}
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Accepts images and PDF files
+            {isExistingFile ? "Click to replace with a new file" : "Accepts images and PDF files"}
           </p>
         </div>
       </div>
@@ -182,11 +190,11 @@ const Appointment = () => {
           // Set ID files if they exist (for display purposes)
           if (profileData.front_id_url) {
             // Create a dummy file object for display
-            setFrontIdFile({ name: "Front ID (Already uploaded)" });
+            setFrontIdFile({ name: "Front ID (Already uploaded)", isExisting: true });
           }
           if (profileData.back_id_url) {
             // Create a dummy file object for display
-            setBackIdFile({ name: "Back ID (Already uploaded)" });
+            setBackIdFile({ name: "Back ID (Already uploaded)", isExisting: true });
           }
         }
       }
@@ -317,7 +325,7 @@ const Appointment = () => {
     const hasExistingFrontId = profileData?.front_id_url;
     const hasExistingBackId = profileData?.back_id_url;
 
-    // Validate file uploads - only require if no existing files
+    // Validate file uploads - require either existing files or new uploads
     if (!hasExistingFrontId && !frontIdFile) return showModal('error', 'Validation Error', 'Please upload the front of your ID.');
     if (!hasExistingBackId && !backIdFile) return showModal('error', 'Validation Error', 'Please upload the back of your ID.');
     
@@ -343,8 +351,8 @@ const Appointment = () => {
       let frontIdUrl = hasExistingFrontId;
       let backIdUrl = hasExistingBackId;
       
-      // Upload new files only if they were provided
-      if (frontIdFile && !hasExistingFrontId) {
+      // Upload new files if they were provided (either new uploads or replacements)
+      if (frontIdFile && !frontIdFile.isExisting) {
         try {
           frontIdUrl = await uploadFile(frontIdFile, 'front_ids', userId, timestamp);
         } catch (error) {
@@ -352,7 +360,7 @@ const Appointment = () => {
         }
       }
       
-      if (backIdFile && !hasExistingBackId) {
+      if (backIdFile && !backIdFile.isExisting) {
         try {
           backIdUrl = await uploadFile(backIdFile, 'back_ids', userId, timestamp);
         } catch (error) {
@@ -774,42 +782,22 @@ const Appointment = () => {
                   {/* ID Upload Section */}
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-3">
+                      <FileUpload
+                        label={frontIdFile && frontIdFile.isExisting ? "Front ID (Click to replace existing)" : "Upload Front of ID *"}
+                        file={frontIdFile}
+                        onFileChange={handleFrontIdChange}
+                        icon={IoImageOutline}
+                      />
                      
-                      {frontIdFile && frontIdFile.name.includes("Already uploaded") ? (
-                        <div className="border-2 border-green-200 rounded-2xl p-6 text-center bg-green-50">
-                          <div className="text-green-600 mb-2">
-                            <IoCheckmarkCircle size={32} className="mx-auto" />
-                          </div>
-                          <p className="text-green-800 font-medium text-sm mb-2">ID already uploaded from profile</p>
-                          <p className="text-xs text-green-600">You can upload a new file to replace it</p>
-                        </div>
-                      ) : (
-                        <FileUpload
-                          label="Upload Front of ID *"
-                          file={frontIdFile}
-                          onFileChange={handleFrontIdChange}
-                          icon={IoImageOutline}
-                        />
-                      )}
                     </div>
                     <div className="space-y-3">
-                      
-                      {backIdFile && backIdFile.name.includes("Already uploaded") ? (
-                        <div className="border-2 border-green-200 rounded-2xl p-6 text-center bg-green-50">
-                          <div className="text-green-600 mb-2">
-                            <IoCheckmarkCircle size={32} className="mx-auto" />
-                          </div>
-                          <p className="text-green-800 font-medium text-sm mb-2">ID already uploaded from profile</p>
-                          <p className="text-xs text-green-600">You can upload a new file to replace it</p>
-                        </div>
-                      ) : (
-                        <FileUpload
-                          label="Upload Back of ID *"
-                          file={backIdFile}
-                          onFileChange={handleBackIdChange}
-                          icon={IoImageOutline}
-                        />
-                      )}
+                      <FileUpload
+                        label={backIdFile && backIdFile.isExisting ? "Back ID (Click to replace existing)" : "Upload Back of ID *"}
+                        file={backIdFile}
+                        onFileChange={handleBackIdChange}
+                        icon={IoImageOutline}
+                      />
+                    
                     </div>
                   </div>
 

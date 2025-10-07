@@ -790,6 +790,9 @@ const DataTable = () => {
                     if (statusFilter !== "all") {
                       const normalizedStatus = (row.status || "pending").toLowerCase();
                       switch (statusFilter) {
+                        case "pending":
+                          matchesStatus = normalizedStatus === "pending" || normalizedStatus === "Pending";
+                          break;
                         case "approved":
                           matchesStatus = normalizedStatus === "approved" || normalizedStatus === "Active";
                           break;
@@ -800,7 +803,7 @@ const DataTable = () => {
                           matchesStatus = normalizedStatus === "cancelled" || normalizedStatus === "Cancelled";
                           break;
                         case "rescheduled":
-                          matchesStatus = normalizedStatus === "rescheduled" || normalizedStatus === "Re-Scheduled";
+                          matchesStatus = normalizedStatus === "rescheduled" || normalizedStatus === "re-scheduled" || normalizedStatus === "Re-Scheduled";
                           break;
                         case "today":
                           // Filter for appointments scheduled today
@@ -955,7 +958,7 @@ const DataTable = () => {
                         matchesStatus = normalizedStatus === "cancelled" || normalizedStatus === "Cancelled";
                         break;
                       case "rescheduled":
-                        matchesStatus = normalizedStatus === "rescheduled" || normalizedStatus === "Re-Scheduled";
+                        matchesStatus = normalizedStatus === "rescheduled" || normalizedStatus === "re-scheduled" || normalizedStatus === "Re-Scheduled";
                         break;
                       case "today":
                         // Filter for appointments scheduled today

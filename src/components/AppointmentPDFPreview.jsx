@@ -117,7 +117,7 @@ const AppointmentPDFPreview = ({ appointment, onClose, onDownload }) => {
                 <div className="text-left">
                   <p className="font-semibold">DSWD</p>
                   <p className="font-bold text-lg">SAN VICENTE MUNICIPAL HALL</p>
-                  <p className="text-sm">San VICENTE, Ilocos Sur</p>
+                  <p className="text-sm">San Vicente, Ilocos Sur</p>
                   <p className="text-sm">esvmswdo@gmail.com</p>
                 </div>
                 <div className="text-right">

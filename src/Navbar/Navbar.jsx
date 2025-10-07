@@ -71,6 +71,8 @@ export default function Navbar() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecoverySession, setIsRecoverySession] = useState(false);
+  const [emailSentTime, setEmailSentTime] = useState(null);
+  const [emailDeliveryStatus, setEmailDeliveryStatus] = useState('idle');
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPDFPreview, setShowPDFPreview] = useState(false);
@@ -920,18 +922,47 @@ export default function Navbar() {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Reset your password</h2>
               <p className="text-gray-600 text-sm">Enter your email and we'll send you a reset link.</p>
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700 font-medium mb-1">💡 Email not arriving?</p>
+                <ul className="text-xs text-blue-600 space-y-1">
+                  <li>• Check your spam/junk folder</li>
+                  <li>• Wait 5-10 minutes for delivery</li>
+                  <li>• Verify your email address is correct</li>
+                  <li>• Try a different email provider</li>
+                </ul>
+              </div>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Email Address</label>
-                <input
-                  type="email"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
-                  placeholder="Enter your email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type="email"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
+                    placeholder="Enter your email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                  />
+                  {emailDeliveryStatus === 'sent' && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="flex items-center space-x-1 text-green-600">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-xs">Sent</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {emailDeliveryStatus === 'sent' && emailSentTime && (
+                  <div className="text-xs text-green-600 flex items-center space-x-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Email sent {Math.floor((Date.now() - emailSentTime) / 1000)}s ago</span>
+                  </div>
+                )}
               </div>
 
               <button
@@ -942,17 +973,38 @@ export default function Navbar() {
                     return;
                   }
                   setIsSubmitting(true);
-                  try {
-                    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                      redirectTo: `${window.location.origin}`,
-                    });
-                    if (error) throw error;
-                    setModal({ isOpen: true, type: 'success', title: 'Reset Link Sent', message: 'Check your email for the password reset link.' });
-                  } catch (err) {
-                    setModal({ isOpen: true, type: 'error', title: 'Reset Failed', message: err.message || 'Could not send reset email.' });
-                  } finally {
-                    setIsSubmitting(false);
-                  }
+                  let retryCount = 0;
+                  const maxRetries = 2;
+                  
+                  const attemptReset = async () => {
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                        redirectTo: `${window.location.origin}`,
+                      });
+                      if (error) throw error;
+                      setEmailSentTime(Date.now());
+                      setEmailDeliveryStatus('sent');
+                      setModal({ 
+                        isOpen: true, 
+                        type: 'success', 
+                        title: 'Reset Link Sent', 
+                        message: 'Check your email for the password reset link. If you don\'t see it within 5 minutes, check your spam folder or try again.' 
+                      });
+                    } catch (err) {
+                      if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(attemptReset, 2000); // Retry after 2 seconds
+                        return;
+                      }
+                      setModal({ isOpen: true, type: 'error', title: 'Reset Failed', message: err.message || 'Could not send reset email. Please try again later.' });
+                    } finally {
+                      if (retryCount >= maxRetries) {
+                        setIsSubmitting(false);
+                      }
+                    }
+                  };
+                  
+                  attemptReset();
                 }}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 rounded-xl font-medium hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
               >
