@@ -447,18 +447,47 @@ const Appointment = () => {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 pt-16">
-        <div className="bg-white/80 backdrop-blur-sm p-10 rounded-3xl shadow-2xl border border-white/20">
+        <div className="bg-white/80 backdrop-blur-sm p-10 rounded-3xl shadow-2xl border border-white/20 relative">
+          <button
+            onClick={() => window.history.back()}
+            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200 hover:scale-110 group z-10"
+          >
+            <svg className="w-5 h-5 text-gray-600 group-hover:text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
           <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <IoPersonOutline size={32} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-4">Sign in required</h1>
-          <p className="text-gray-600 mb-8 max-w-md">You must be logged in to book an appointment with our services.</p>
-          <button
-            onClick={() => navigate("/")}
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
-          >
-            Go back to Home
-          </button>
+          <p className="text-gray-600 mb-6 max-w-md">You must be logged in to book an appointment with our services.</p>
+          <div className="space-y-6">
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-gray-700 font-medium mb-3">Already have an account?</p>
+                <button
+                  onClick={() => {
+                    // Trigger login modal by setting a flag in localStorage
+                    localStorage.setItem('triggerLoginModal', 'true');
+                    navigate("/");
+                  }}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 py-3 text-sm font-medium rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+                >
+                  LOGIN
+                </button>
+              </div>
+              <div className="text-center">
+                <p className="text-gray-700 font-medium mb-3">Don't Have an Account? Signup here</p>
+                <button
+                  onClick={() => navigate("/signup")}
+                  className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-3 text-sm font-medium rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+                >
+                  SIGNUP
+                </button>
+              </div>
+            </div>
+           
+          </div>
         </div>
       </div>
     );

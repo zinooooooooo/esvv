@@ -482,6 +482,40 @@ export default function Navbar() {
 
   
 
+  // Listen for login modal trigger from other components
+  useEffect(() => {
+    const checkLoginTrigger = () => {
+      try {
+        const triggerLogin = localStorage.getItem('triggerLoginModal');
+        if (triggerLogin === 'true') {
+          setShowLogin(true);
+          localStorage.removeItem('triggerLoginModal');
+        }
+      } catch (_) {}
+    };
+
+    // Check on component mount
+    checkLoginTrigger();
+
+    // Listen for storage changes (when localStorage is updated from other tabs/components)
+    const handleStorageChange = (e) => {
+      if (e.key === 'triggerLoginModal' && e.newValue === 'true') {
+        setShowLogin(true);
+        localStorage.removeItem('triggerLoginModal');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically for the flag (in case of same-tab updates)
+    const interval = setInterval(checkLoginTrigger, 100);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   // Restore session on app load and keep state in sync with Supabase
   useEffect(() => {
     let isMounted = true;
