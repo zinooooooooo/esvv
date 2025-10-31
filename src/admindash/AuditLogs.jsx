@@ -120,11 +120,48 @@ const AuditLog = () => {
     setFilteredLogs(filtered);
   };
 
+  const formatDateInput = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getMinEndDate = () => {
+    if (!filters.startDate) return undefined;
+    const d = new Date(filters.startDate);
+    d.setDate(d.getDate() + 1); // must be strictly after start date
+    return formatDateInput(d);
+  };
+
   const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    setFilters(prev => {
+      // Prevent setting an invalid endDate (<= startDate)
+      if (
+        filterType === 'endDate' &&
+        value &&
+        prev.startDate &&
+        new Date(value) <= new Date(prev.startDate)
+      ) {
+        return prev; // ignore invalid selection
+      }
+
+      const next = { ...prev, [filterType]: value };
+
+      // If startDate moves to or past current endDate, auto-adjust endDate to startDate + 1 day
+      if (
+        filterType === 'startDate' &&
+        next.endDate &&
+        value &&
+        new Date(value) >= new Date(next.endDate)
+      ) {
+        const d = new Date(value);
+        d.setDate(d.getDate() + 1);
+        next.endDate = formatDateInput(d);
+      }
+
+      return next;
+    });
   };
 
   const clearFilters = () => {
@@ -229,6 +266,7 @@ const AuditLog = () => {
       'admin': 'bg-red-100 text-red-900',
       'manager': 'bg-orange-100 text-orange-900',
       'user': 'bg-green-100 text-green-900',
+      'citizen': 'bg-green-100 text-green-900',
       'guest': 'bg-gray-100 text-gray-900'
     };
     return colors[userType?.toLowerCase()] || 'bg-indigo-100 text-indigo-900';
@@ -324,6 +362,7 @@ const AuditLog = () => {
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  max={filters.endDate || undefined}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               </div>
@@ -334,6 +373,8 @@ const AuditLog = () => {
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  min={getMinEndDate()}
+                  disabled={!filters.startDate}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               </div>
@@ -464,7 +505,7 @@ const AuditLog = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(log.user_type)}`}>
-                            {log.user_type || 'Unknown'}
+                            {log.user_type === 'user' ? 'Resident' : (log.user_type || 'Unknown')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

@@ -122,7 +122,7 @@ const AppointmentPDFPreview = ({ appointment, onClose, onDownload }) => {
                 </div>
                 <div className="text-right">
                   <p>Date: {appointmentDate}</p>
-                  <p>Appointee: {fullName}</p>
+              
                 </div>
               </div>
             </div>

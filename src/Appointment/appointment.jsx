@@ -98,7 +98,6 @@ const Appointment = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState("");
-  const [appointee, setAppointee] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -269,8 +268,7 @@ const Appointment = () => {
     // Validate sector selection
     if (!selectedType) return showModal('error', 'Validation Error', 'Please select a sector.');
     
-    // Validate appointee selection
-    if (!appointee) return showModal('error', 'Validation Error', 'Please select who the appointment is for (Yourself or Relative).');
+    // Appointee selection removed
     
     // Validate service selection
     if (!selectedService) return showModal('error', 'Validation Error', 'Please select a service.');
@@ -315,7 +313,7 @@ const Appointment = () => {
       return showModal('error', 'Validation Error', 'Unable to verify existing appointments. Please try again.');
     }
     
-    // Check if user has existing ID files in profile
+    // Check if user has existing ID files in profile (optional for appointment)
     const { data: profileData } = await supabase
       .from("profiles")
       .select("front_id_url, back_id_url")
@@ -325,19 +323,13 @@ const Appointment = () => {
     const hasExistingFrontId = profileData?.front_id_url;
     const hasExistingBackId = profileData?.back_id_url;
 
-    // Validate file uploads - require either existing files or new uploads
-    if (!hasExistingFrontId && !frontIdFile) return showModal('error', 'Validation Error', 'Please upload the front of your ID.');
-    if (!hasExistingBackId && !backIdFile) return showModal('error', 'Validation Error', 'Please upload the back of your ID.');
-    
-    // Validate required form fields with specific messages
+    // Validate required form fields with specific messages (ID details no longer required here)
     if (!formData.firstName) return showModal('error', 'Validation Error', 'Please enter your first name.');
     if (!formData.lastName) return showModal('error', 'Validation Error', 'Please enter your last name.');
     if (!formData.phone) return showModal('error', 'Validation Error', 'Please enter your phone number.');
     if (!formData.email) return showModal('error', 'Validation Error', 'Please enter your email address.');
     if (!formData.gender) return showModal('error', 'Validation Error', 'Please select your gender.');
     if (!formData.barangay) return showModal('error', 'Validation Error', 'Please select your barangay.');
-    if (!formData.idType) return showModal('error', 'Validation Error', 'Please select the type of ID.');
-    if (!formData.idNumber) return showModal('error', 'Validation Error', 'Please enter your ID number.');
   
     const tableName = tableMap[selectedType];
     if (!tableName) return showModal('error', 'Error', 'Invalid sector type.');
@@ -347,26 +339,9 @@ const Appointment = () => {
       const userId = user.id;
       const timestamp = Date.now();
   
-      // Use existing files or upload new ones
-      let frontIdUrl = hasExistingFrontId;
-      let backIdUrl = hasExistingBackId;
-      
-      // Upload new files if they were provided (either new uploads or replacements)
-      if (frontIdFile && !frontIdFile.isExisting) {
-        try {
-          frontIdUrl = await uploadFile(frontIdFile, 'front_ids', userId, timestamp);
-        } catch (error) {
-          return showModal('error', 'File Upload Error', `Failed to upload front ID: ${error.message}`);
-        }
-      }
-      
-      if (backIdFile && !backIdFile.isExisting) {
-        try {
-          backIdUrl = await uploadFile(backIdFile, 'back_ids', userId, timestamp);
-        } catch (error) {
-          return showModal('error', 'File Upload Error', `Failed to upload back ID: ${error.message}`);
-        }
-      }
+      // Use existing files if available; uploads are not required during appointment
+      const frontIdUrl = hasExistingFrontId || null;
+      const backIdUrl = hasExistingBackId || null;
   
       const formattedData = {
         user_id: userId,
@@ -377,12 +352,12 @@ const Appointment = () => {
         email: formData.email,
         gender: formData.gender,
         barangay: formData.barangay,
-        id_type: formData.idType,
-        id_number: formData.idNumber,
+        // ID details are optional at appointment time
+        id_type: formData.idType || null,
+        id_number: formData.idNumber || null,
         front_id_url: frontIdUrl,
         back_id_url: backIdUrl,
         service: selectedService,
-        appointee: appointee,
         appointment_date: selectedDate,  
         appointment_time: selectedTime,  
         status: "pending",
@@ -397,8 +372,8 @@ const Appointment = () => {
         const { error: auditError } = await supabase.from("audit_logs").insert([
           {
             user_id: userId,
-            user_type: "user",
-            action: `appointment_created (${appointee})`,
+            user_type: "citizen",
+            action: `appointment_created`,
             location: "Appointment Page",
             date: new Date().toISOString(),
           },
@@ -416,7 +391,6 @@ const Appointment = () => {
           idType: "", idNumber: ""
         });
         setSelectedType("");
-        setAppointee("");
         setSelectedService("");
         setSelectedDate("");
         setSelectedTime("");
@@ -557,7 +531,6 @@ const Appointment = () => {
                 value={selectedType}
                 onChange={(e) => {
                   setSelectedType(e.target.value);
-                  setAppointee("");
                   setSelectedService("");
                 }}
               >
@@ -573,7 +546,7 @@ const Appointment = () => {
             {selectedType && (
               <>
                 {/* Appointee Selection */}
-                <div className="space-y-4">
+                {/* <div className="space-y-4">
                   <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Who is the appointee?</label>
                   <div className="grid md:grid-cols-2 gap-6">
                     <label className="flex items-center p-6 border-2 border-indigo-200 rounded-2xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-300 bg-white/70 backdrop-blur-sm group">
@@ -599,7 +572,7 @@ const Appointment = () => {
                       <span className="font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">Relative</span>
                     </label>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Service Selection */}
                 <div className="space-y-4">
@@ -755,94 +728,19 @@ const Appointment = () => {
                   </div>
                 </div>
 
-                {/* ID Information */}
-                <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-8 rounded-3xl border border-gray-100 shadow-inner">
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-bold text-gray-800 flex items-center">
-                      <IoCardOutline className="mr-3 text-indigo-600" />
-                      ID Information
-                    </h3>
-                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                      ✓ Pre-filled from profile
-                    </div>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-6 mb-8">
-                    <div className="relative">
-                      <IoCardOutline className="absolute left-4 top-4 text-indigo-500" size={20} />
-                      <select
-                        name="idType"
-                        className="w-full pl-12 pr-4 py-4 border-2 border-indigo-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 transition-all duration-300 bg-white/70 backdrop-blur-sm font-medium"
-                        value={formData.idType}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="">Select Type of ID *</option>
-                        {[
-                          "National ID",
-                          "Passport",
-                          "Driver's License",
-                          "Voter's ID",
-                          "Senior Citizen ID",
-                          "PWD ID",
-                          "Solo Parent ID",
-                        ].map((idType) => (
-                          <option key={idType} value={idType}>
-                            {idType}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="relative">
-                      <IoDocumentTextOutline className="absolute left-4 top-4 text-indigo-500" size={20} />
-                      <input
-                        type="text"
-                        name="idNumber"
-                        placeholder="ID Number *"
-                        value={formData.idNumber}
-                        onChange={handleChange}
-                        className="w-full pl-12 pr-4 py-4 border-2 border-indigo-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 transition-all duration-300 bg-white/70 backdrop-blur-sm"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* ID Upload Section */}
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                      <FileUpload
-                        label={frontIdFile && frontIdFile.isExisting ? "Front ID (Click to replace existing)" : "Upload Front of ID *"}
-                        file={frontIdFile}
-                        onFileChange={handleFrontIdChange}
-                        icon={IoImageOutline}
-                      />
-                     
-                    </div>
-                    <div className="space-y-3">
-                      <FileUpload
-                        label={backIdFile && backIdFile.isExisting ? "Back ID (Click to replace existing)" : "Upload Back of ID *"}
-                        file={backIdFile}
-                        onFileChange={handleBackIdChange}
-                        icon={IoImageOutline}
-                      />
-                    
-                    </div>
-                  </div>
-
-                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                    <div className="flex items-start">
-                      <IoAlert className="text-amber-500 mr-3 mt-1 flex-shrink-0" size={20} />
-                      <div>
-                        <p className="text-sm font-semibold text-amber-800 mb-1">Important Note:</p>
-                        <p className="text-sm text-amber-700">
-                          Please ensure both sides of your ID are clearly visible and readable. 
-                          Accepted formats: JPG, PNG, PDF (max 10MB per file)
-                        </p>
+                {false && (
+                  <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-8 rounded-3xl border border-gray-100 shadow-inner">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-2xl font-bold text-gray-800 flex items-center">
+                        <IoCardOutline className="mr-3 text-indigo-600" />
+                        ID Information
+                      </h3>
+                      <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        ✓ Pre-filled from profile
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
               </>
             )}

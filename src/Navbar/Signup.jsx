@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IoArrowBack, IoPersonOutline, IoCallOutline, IoMailOutline, IoLocationOutline, IoCardOutline, IoDocumentTextOutline, IoCloudUploadOutline, IoImageOutline, IoAlert } from "react-icons/io5";
+import { IoArrowBack, IoPersonOutline, IoCallOutline, IoMailOutline, IoLocationOutline, IoCardOutline, IoDocumentTextOutline, IoCloudUploadOutline, IoImageOutline, IoAlert, IoEye, IoEyeOff } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { supabase } from "../supabase";
@@ -47,7 +47,7 @@ const Signup = () => {
     firstName: "",
     middleName: "",
     lastName: "",
-    phone: "",
+    phone: "+63",
     gender: "",
     barangay: "",
     idType: "",
@@ -58,6 +58,9 @@ const Signup = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [infoModal, setInfoModal] = useState({ open: false, title: "", message: "" });
 
   const barangayList = [
     "Bantaoay",
@@ -71,6 +74,23 @@ const Signup = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // Specialized handler to enforce "+63" prefix, numeric-only, and 10 digits max after prefix
+  const handlePhoneChange = (e) => {
+    const rawValue = e.target.value || "";
+    // Remove all non-digits except possible leading '+'
+    let value = rawValue.startsWith("+63") ? rawValue : rawValue.replace(/^\+?/, "+");
+    // Always enforce '+63' prefix
+    if (!value.startsWith("+63")) {
+      // If user typed something else, coerce to +63 plus digits from input
+      const digits = value.replace(/[^0-9]/g, "");
+      value = "+63" + digits;
+    }
+    // Extract digits after prefix and clamp to 10
+    const digitsAfterPrefix = value.slice(3).replace(/\D/g, "").slice(0, 10);
+    const nextValue = "+63" + digitsAfterPrefix;
+    setFormData({ ...formData, phone: nextValue });
   };
 
   const handleFrontIdChange = (event) => {
@@ -136,8 +156,9 @@ const Signup = () => {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
+    const passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordPolicy.test(password)) {
+      setError("Password must be at least 8 characters and include at least one uppercase letter, one lowercase letter, and one number.");
       setShowModal(true);
       return;
     }
@@ -162,6 +183,13 @@ const Signup = () => {
 
     if (!phone) {
       setError("Please enter your phone number");
+      setShowModal(true);
+      return;
+    }
+    // Enforce '+63' followed by exactly 10 digits
+    const phoneDigits = (phone.startsWith("+63") ? phone.slice(3) : phone).replace(/\D/g, "");
+    if (!phone.startsWith("+63") || phoneDigits.length !== 10) {
+      setError("Phone number must be +63 followed by 10 digits");
       setShowModal(true);
       return;
     }
@@ -264,7 +292,7 @@ const Signup = () => {
       const { error: auditError } = await supabase.from("audit_logs").insert([
         {
           user_id: userId,
-          user_type: "user",
+          user_type: "citizen",
           action: "account_created",
           location: "Signup Page",
           date: new Date().toISOString(),
@@ -281,6 +309,15 @@ const Signup = () => {
       });
 
       if (loginError) {
+        // If the login failed because the email isn't confirmed yet, show a success-style info modal
+        if (/confirm/i.test(loginError.message || "")) {
+          setInfoModal({
+            open: true,
+            title: "Sign Up Sucessful!",
+            message: "Confirm your email before loggin in",
+          });
+          return;
+        }
         throw new Error("Login failed: " + loginError.message);
       }
 
@@ -369,15 +406,25 @@ const Signup = () => {
                   </svg>
                   Password *
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password (min. 8 characters)"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="At least 8 chars, 1 uppercase, 1 lowercase, 1 number"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <IoEyeOff size={18} /> : <IoEye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -387,15 +434,25 @@ const Signup = () => {
                   </svg>
                   Confirm Password *
                 </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Confirm your password"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? <IoEyeOff size={18} /> : <IoEye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -464,8 +521,11 @@ const Signup = () => {
                   type="tel"
                   name="phone"
                   value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="Enter your phone number"
+                  onChange={handlePhoneChange}
+                  placeholder="+63XXXXXXXXXX"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={13}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                   required
                 />
@@ -663,6 +723,27 @@ const Signup = () => {
             <button
               onClick={closeModal}
               className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl font-medium transition-colors duration-200"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+      {infoModal.open && (
+        <div className="fixed inset-0 bg-black-6- bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-300">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{infoModal.title}</h3>
+            </div>
+            <p className="text-gray-600 mb-6">{infoModal.message}</p>
+            <button
+              onClick={() => setInfoModal({ open: false, title: "", message: "" })}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl font-medium transition-colors duration-200"
             >
               OK
             </button>

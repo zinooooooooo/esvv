@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import logo from '../assets/logo.png';
 import { supabase } from '../supabase';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -80,6 +80,36 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [frontIdEditFile, setFrontIdEditFile] = useState(null);
+  const [backIdEditFile, setBackIdEditFile] = useState(null);
+  const [frontPreviewUrl, setFrontPreviewUrl] = useState('');
+  const [backPreviewUrl, setBackPreviewUrl] = useState('');
+  const frontInputRef = useRef(null);
+  const backInputRef = useRef(null);
+  const [editFormData, setEditFormData] = useState({
+    email: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    phone: '+63',
+    gender: '',
+    barangay: '',
+    idType: '',
+    idNumber: '',
+    frontUrl: '',
+    backUrl: ''
+  });
+  const barangayList = [
+    "Bantaoay",
+    "Bayubay Norte",
+    "Bayubay Sur",
+    "Lubong",
+    "Poblacion",
+    "Pudoc",
+    "San Sebastian",
+  ];
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -156,7 +186,27 @@ export default function Navbar() {
       });
 
       if (error) {
-        alert("Login failed: " + error.message);
+        try {
+          const { data: profileData, error: profileLookupError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
+          if (profileLookupError) {
+            // Fallback to generic message if lookup fails
+            setModal({ isOpen: true, type: 'error', title: 'Invalid Login', message: 'Wrong password or incorrect email.' });
+            return;
+          }
+
+          if (profileData?.id) {
+            setModal({ isOpen: true, type: 'error', title: 'Incorrect Password', message: 'The password you entered is incorrect.' });
+          } else {
+            setModal({ isOpen: true, type: 'error', title: 'Incorrect Email', message: 'No account found with this email.' });
+          }
+        } catch (_) {
+          setModal({ isOpen: true, type: 'error', title: 'Invalid Login', message: 'Wrong password or incorrect email.' });
+        }
         return;
       }
 
@@ -170,7 +220,7 @@ export default function Navbar() {
       setShowLogin(false);
     } catch (err) {
       console.error("Login error:", err);
-      alert("Login failed: " + err.message);
+      setModal({ isOpen: true, type: 'error', title: 'Invalid Login', message: 'Wrong password or incorrect email.' });
     } finally {
       setSubmitting(false);
     }
@@ -238,6 +288,169 @@ export default function Navbar() {
     setShowAppointmentModal(true);
     setShowProfileDropdown(false);
     fetchAppointments();
+  };
+
+  const handleEditChange = (e) => {
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleEditPhoneChange = (e) => {
+    const rawValue = e.target.value || '';
+    let value = rawValue.startsWith('+63') ? rawValue : rawValue.replace(/^\+?/, '+');
+    if (!value.startsWith('+63')) {
+      const digits = value.replace(/[^0-9]/g, '');
+      value = '+63' + digits;
+    }
+    const digitsAfterPrefix = value.slice(3).replace(/\D/g, '').slice(0, 10);
+    const nextValue = '+63' + digitsAfterPrefix;
+    setEditFormData({ ...editFormData, phone: nextValue });
+  };
+
+  const handleFrontIdEditChange = (event) => {
+    if (event.target.files && event.target.files.length > 0) {
+      setFrontIdEditFile(event.target.files[0]);
+      try {
+        const url = URL.createObjectURL(event.target.files[0]);
+        setFrontPreviewUrl(url);
+      } catch (_) {}
+    }
+  };
+
+  const handleBackIdEditChange = (event) => {
+    if (event.target.files && event.target.files.length > 0) {
+      setBackIdEditFile(event.target.files[0]);
+      try {
+        const url = URL.createObjectURL(event.target.files[0]);
+        setBackPreviewUrl(url);
+      } catch (_) {}
+    }
+  };
+
+  const uploadFile = async (file, folder, userId, timestamp) => {
+    const safeFileName = file.name
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^_+|_+$/g, '');
+    const finalFileName = safeFileName || `file_${timestamp}`;
+    const filePath = `${userId}/${folder}/${timestamp}_${finalFileName}`;
+    const { error: uploadError } = await supabase.storage
+      .from('appointments')
+      .upload(filePath, file, { contentType: file.type, upsert: false });
+    if (uploadError) throw new Error(`File upload failed: ${uploadError.message}`);
+    const { data: urlData } = supabase.storage.from('appointments').getPublicUrl(filePath);
+    return urlData.publicUrl;
+  };
+
+  const openEditProfile = async () => {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+      if (!currentUser) return;
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+      if (profileError) throw profileError;
+      setEditFormData({
+        email: profileData.email || currentUser.email || '',
+        firstName: profileData.first_name || '',
+        middleName: profileData.middle_name || '',
+        lastName: profileData.last_name || '',
+        phone: profileData.phone || '+63',
+        gender: profileData.gender || '',
+        barangay: profileData.barangay || '',
+        idType: profileData.id_type || '',
+        idNumber: profileData.id_number || '',
+        frontUrl: profileData.front_id_url || '',
+        backUrl: profileData.back_id_url || ''
+      });
+      setFrontIdEditFile(null);
+      setBackIdEditFile(null);
+      setFrontPreviewUrl(profileData.front_id_url || '');
+      setBackPreviewUrl(profileData.back_id_url || '');
+      setShowEditProfileModal(true);
+      setShowProfileDropdown(false);
+    } catch (err) {
+      setModal({ isOpen: true, type: 'error', title: 'Profile Error', message: err.message || 'Failed to load profile.' });
+    }
+  };
+
+  const submitEditProfile = async (e) => {
+    e?.preventDefault?.();
+    if (editSubmitting) return;
+    setEditSubmitting(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+      if (!currentUser) throw new Error('Not signed in.');
+
+      const { email, firstName, middleName, lastName, phone, gender, barangay, idType, idNumber, frontUrl, backUrl } = editFormData;
+
+      // Basic validations
+      if (!firstName) throw new Error('Please enter your first name');
+      if (!lastName) throw new Error('Please enter your last name');
+      if (!phone) throw new Error('Please enter your phone number');
+      const phoneDigits = (phone.startsWith('+63') ? phone.slice(3) : phone).replace(/\D/g, '');
+      if (!phone.startsWith('+63') || phoneDigits.length !== 10) throw new Error('Phone number must be +63 followed by 10 digits');
+      if (!gender) throw new Error('Please select your gender');
+      if (!barangay) throw new Error('Please select your barangay');
+      if (!idType) throw new Error('Please select the type of ID');
+      if (!idNumber) throw new Error('Please enter your ID number');
+
+      // Upload new files if provided
+      const timestamp = Date.now();
+      let nextFrontUrl = frontUrl;
+      let nextBackUrl = backUrl;
+      if (frontIdEditFile) {
+        nextFrontUrl = await uploadFile(frontIdEditFile, 'front_ids', currentUser.id, timestamp);
+      }
+      if (backIdEditFile) {
+        nextBackUrl = await uploadFile(backIdEditFile, 'back_ids', currentUser.id, timestamp);
+      }
+
+      if (!nextFrontUrl || !nextBackUrl) {
+        throw new Error('Please upload both front and back of your ID');
+      }
+
+      const full_name = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim();
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name,
+          email,
+          first_name: firstName,
+          middle_name: middleName,
+          last_name: lastName,
+          phone,
+          gender,
+          barangay,
+          id_type: idType,
+          id_number: idNumber,
+          front_id_url: nextFrontUrl,
+          back_id_url: nextBackUrl,
+        })
+        .eq('id', currentUser.id);
+      if (updateError) throw new Error(updateError.message);
+
+      // Update auth email if changed
+      if (email && email !== (currentUser.email || '')) {
+        const { error: authUpdateError } = await supabase.auth.updateUser({ email });
+        if (authUpdateError) {
+          setModal({ isOpen: true, type: 'error', title: 'Email Update Failed', message: authUpdateError.message });
+        } else {
+          setModal({ isOpen: true, type: 'success', title: 'Email Update', message: 'If required, please confirm the change via the email link.' });
+        }
+      }
+
+      setFullName(full_name);
+      setModal({ isOpen: true, type: 'success', title: 'Profile Updated', message: 'Your profile has been updated successfully.' });
+      setShowEditProfileModal(false);
+    } catch (err) {
+      setModal({ isOpen: true, type: 'error', title: 'Update Failed', message: err.message || 'Failed to update profile.' });
+    } finally {
+      setEditSubmitting(false);
+    }
   };
   
   const getStatusColor = (status) => {
@@ -716,9 +929,18 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-3 w-56 bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl z-[10000] border border-gray-100 animate-in slide-in-from-top-2 duration-200">
                       <div className="p-4 border-b border-gray-100">
                         <p className="font-semibold text-gray-900 truncate">{fullName}</p>
-                        <p className="text-sm text-gray-500 capitalize">{role}</p>
+                        <p className="text-sm text-gray-500 capitalize">{role === 'user' ? 'Resident' : role}</p>
                       </div>
                       <div className="py-2">
+                        <button
+                          onClick={openEditProfile}
+                          className="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+                        >
+                          <svg className="w-4 h-4 mr-3 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h2m2 0h2m-6 4h6m-6 4h6M7 9h.01M7 13h.01M7 17h.01M5 3h14a2 2 0 012 2v14l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                          </svg>
+                          Edit Profile
+                        </button>
                         <button
                           onClick={handleAppointmentStatusClick}
                           className="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
@@ -780,7 +1002,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <div className="px-3 py-2 text-sm font-medium text-gray-900 bg-gray-50 rounded-md">
-                    {fullName} ({role})
+                    {fullName} ({role === 'user' ? 'Resident' : role})
                   </div>
                   <button
                     onClick={handleNotificationClick}
@@ -1178,6 +1400,159 @@ export default function Navbar() {
                 {isSubmitting ? 'Updating…' : 'Verify & Update Password'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/20 backdrop-blur-xl z-[10001] p-4">
+          <div className="w-full max-w-3xl bg-white/95 backdrop-blur-xl p-6 rounded-3xl shadow-2xl relative border border-gray-100 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowEditProfileModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4 4 0 017 17h10a4 4 0 011.879.804L21 19V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12l2.121-1.196zM12 9a3 3 0 110-6 3 3 0 010 6z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Edit Profile</h2>
+              <p className="text-gray-600 text-sm">Update your personal information and ID files.</p>
+            </div>
+
+            <form onSubmit={submitEditProfile} className="space-y-5">
+              <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-4 rounded-2xl border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-3">Account Information</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Email Address</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editFormData.email}
+                      onChange={handleEditChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-4 rounded-2xl border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-3">Personal Details</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">First Name</label>
+                    <input type="text" name="firstName" value={editFormData.firstName} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Middle Name</label>
+                    <input type="text" name="middleName" value={editFormData.middleName} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Last Name</label>
+                    <input type="text" name="lastName" value={editFormData.lastName} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                    <input type="tel" name="phone" value={editFormData.phone} onChange={handleEditPhoneChange} placeholder="+63XXXXXXXXXX" inputMode="numeric" maxLength={13} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Gender</label>
+                    <select name="gender" value={editFormData.gender} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none">
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Barangay</label>
+                    <select name="barangay" value={editFormData.barangay} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none">
+                      <option value="">Select Barangay</option>
+                      {barangayList.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-4 rounded-2xl border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-3">ID Information</h3>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Type of ID</label>
+                    <select name="idType" value={editFormData.idType} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none">
+                      <option value="">Select Type of ID</option>
+                      {['National ID','Passport','Driver\'s License','Voter\'s ID','Senior Citizen ID','PWD ID','Solo Parent ID'].map((id) => (
+                        <option key={id} value={id}>{id}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">ID Number</label>
+                    <input type="text" name="idNumber" value={editFormData.idNumber} onChange={handleEditChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Upload Front of ID</label>
+                    <div className="border border-gray-200 rounded-xl p-3 bg-white">
+                      <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg overflow-hidden">
+                        {frontPreviewUrl && !frontPreviewUrl.toLowerCase().endsWith('.pdf') ? (
+                          <img src={frontPreviewUrl} alt="Front ID preview" className="max-h-40 object-contain" />
+                        ) : frontPreviewUrl ? (
+                          <a href={frontPreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm underline">View current PDF</a>
+                        ) : (
+                          <span className="text-xs text-gray-500">No file selected</span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <input ref={frontInputRef} type="file" accept="image/*,.pdf" onChange={handleFrontIdEditChange} className="hidden" />
+                        <button type="button" onClick={() => frontInputRef.current && frontInputRef.current.click()} className="px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Re-upload</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Upload Back of ID</label>
+                    <div className="border border-gray-200 rounded-xl p-3 bg-white">
+                      <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg overflow-hidden">
+                        {backPreviewUrl && !backPreviewUrl.toLowerCase().endsWith('.pdf') ? (
+                          <img src={backPreviewUrl} alt="Back ID preview" className="max-h-40 object-contain" />
+                        ) : backPreviewUrl ? (
+                          <a href={backPreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm underline">View current PDF</a>
+                        ) : (
+                          <span className="text-xs text-gray-500">No file selected</span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <input ref={backInputRef} type="file" accept="image/*,.pdf" onChange={handleBackIdEditChange} className="hidden" />
+                        <button type="button" onClick={() => backInputRef.current && backInputRef.current.click()} className="px-3 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Re-upload</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                  Please ensure both sides of your ID are clearly visible and readable. Accepted formats: JPG, PNG, PDF (max 10MB per file)
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowEditProfileModal(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 bg-white hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={editSubmitting} className={`flex-1 py-3 rounded-xl text-white ${editSubmitting ? 'bg-gray-400' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg'}`}>
+                  {editSubmitting ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -2,13 +2,19 @@ import { supabase } from '../supabase';
 
 // Document Management API
 export const documentService = {
-  // Get all documents
-  getDocuments: async () => {
+  // Get all documents (excluding archived by default)
+  getDocuments: async (includeArchived = false) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      if (!includeArchived) {
+        query = query.eq('archived', false);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data || [];
@@ -19,13 +25,19 @@ export const documentService = {
   },
 
   // Get documents by folder
-  getDocumentsByFolder: async (folderId) => {
+  getDocumentsByFolder: async (folderId, includeArchived = false) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
         .select('*')
         .eq('folder_id', folderId)
         .order('created_at', { ascending: false });
+      
+      if (!includeArchived) {
+        query = query.eq('archived', false);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data || [];
@@ -36,18 +48,41 @@ export const documentService = {
   },
 
   // Get starred documents
-  getStarredDocuments: async () => {
+  getStarredDocuments: async (includeArchived = false) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
         .select('*')
         .eq('starred', true)
         .order('created_at', { ascending: false });
       
+      if (!includeArchived) {
+        query = query.eq('archived', false);
+      }
+      
+      const { data, error } = await query;
+      
       if (error) throw error;
       return data || [];
     } catch (error) {
       console.error('Error fetching starred documents:', error);
+      throw error;
+    }
+  },
+
+  // Get archived documents
+  getArchivedDocuments: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('archived', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching archived documents:', error);
       throw error;
     }
   },
@@ -113,7 +148,43 @@ export const documentService = {
     }
   },
 
-  // Delete document
+  // Archive document (soft delete)
+  archiveDocument: async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .update({ archived: true, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error archiving document:', error);
+      throw error;
+    }
+  },
+
+  // Unarchive document
+  unarchiveDocument: async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .update({ archived: false, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error unarchiving document:', error);
+      throw error;
+    }
+  },
+
+  // Delete document (permanent delete - kept for admin use)
   deleteDocument: async (id) => {
     try {
       // Get document to delete file from storage
@@ -133,7 +204,6 @@ export const documentService = {
 
         if (storageError) console.error('Error deleting file from storage:', storageError);
       }
-
 
       const { error } = await supabase
         .from('documents')

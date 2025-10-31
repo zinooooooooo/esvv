@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS documents (
   mime_type TEXT NOT NULL,
   folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
   starred BOOLEAN DEFAULT FALSE,
+  archived BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS documents (
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_documents_folder_id ON documents(folder_id);
 CREATE INDEX IF NOT EXISTS idx_documents_starred ON documents(starred);
+CREATE INDEX IF NOT EXISTS idx_documents_archived ON documents(archived);
 CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at);
 CREATE INDEX IF NOT EXISTS idx_documents_name ON documents(name);
 
@@ -58,8 +60,13 @@ CREATE TRIGGER update_documents_updated_at
 INSERT INTO folders (name, editable, is_default) VALUES
   ('All Documents', false, true),
   ('Starred', false, true),
+  ('Archived', false, true),
   ('General', true, true)
 ON CONFLICT (name) DO NOTHING;
+
+-- Add archived column to existing documents table if it doesn't exist
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_documents_archived ON documents(archived);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE folders ENABLE ROW LEVEL SECURITY;

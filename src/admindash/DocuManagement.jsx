@@ -18,7 +18,9 @@ import {
   Menu,
   AlertCircle,
   CheckCircle,
-  ArrowLeft
+  ArrowLeft,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 import { documentService, folderService, fileService } from '../services';
 
@@ -38,6 +40,7 @@ export default function FunctionalDocumentManager() {
   const [notification, setNotification] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
   const [previewModal, setPreviewModal] = useState({ show: false, document: null });
+  const [archiveConfirmModal, setArchiveConfirmModal] = useState({ show: false, documentId: null, action: null });
   const fileInputRef = useRef(null);
 
 
@@ -45,20 +48,32 @@ export default function FunctionalDocumentManager() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (folderId = null) => {
     try {
       setLoading(true);
-      const [foldersData, documentsData] = await Promise.all([
-        folderService.getFolders(),
+      const foldersData = await folderService.getFolders();
+      setFolders(foldersData);
+      
+      // Load all documents (including archived) for accurate folder counts
+      // We'll filter the display based on selected folder
+      const [archivedDocs, nonArchivedDocs] = await Promise.all([
+        documentService.getArchivedDocuments(),
         documentService.getDocuments()
       ]);
-      setFolders(foldersData);
-      setDocuments(documentsData);
       
-      // Set initial selected folder to "All Documents"
-      const allDocumentsFolder = foldersData.find(f => f.name === 'All Documents');
-      if (allDocumentsFolder) {
-        setSelectedFolder(allDocumentsFolder.id);
+      // Combine all documents for accurate folder counts
+      const allDocuments = [...nonArchivedDocs, ...archivedDocs];
+      setDocuments(allDocuments);
+      
+      // Use provided folderId or current selectedFolder
+      const targetFolderId = folderId || selectedFolder;
+      
+      // Set initial selected folder to "All Documents" if not set
+      if (!targetFolderId) {
+        const allDocumentsFolder = foldersData.find(f => f.name === 'All Documents');
+        if (allDocumentsFolder) {
+          setSelectedFolder(allDocumentsFolder.id);
+        }
       }
     } catch (error) {
       showNotification('Error loading data', 'error');
@@ -77,11 +92,13 @@ export default function FunctionalDocumentManager() {
     return folders.map(folder => {
       let count = 0;
       if (folder.name === 'All Documents') {
-        count = documents.length;
+        count = documents.filter(doc => !doc.archived).length;
       } else if (folder.name === 'Starred') {
-        count = documents.filter(doc => doc.starred).length;
+        count = documents.filter(doc => doc.starred && !doc.archived).length;
+      } else if (folder.name === 'Archived') {
+        count = documents.filter(doc => doc.archived).length;
       } else {
-        count = documents.filter(doc => doc.folder_id === folder.id).length;
+        count = documents.filter(doc => doc.folder_id === folder.id && !doc.archived).length;
       }
       return { ...folder, count };
     });
@@ -93,10 +110,17 @@ export default function FunctionalDocumentManager() {
     // Get the selected folder name for comparison
     const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name;
     
-    const matchesFolder =
-      selectedFolderName === 'All Documents' || 
-      doc.folder_id === selectedFolder || 
-      (selectedFolderName === 'Starred' && doc.starred);
+    let matchesFolder = false;
+    if (selectedFolderName === 'All Documents') {
+      matchesFolder = !doc.archived;
+    } else if (selectedFolderName === 'Starred') {
+      matchesFolder = doc.starred && !doc.archived;
+    } else if (selectedFolderName === 'Archived') {
+      matchesFolder = doc.archived;
+    } else {
+      matchesFolder = doc.folder_id === selectedFolder && !doc.archived;
+    }
+    
     return matchesSearch && matchesFolder;
   });
 
@@ -230,17 +254,45 @@ export default function FunctionalDocumentManager() {
     }
   };
 
-  const deleteDocument = async (id) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
-      return;
-    }
+  const handleArchiveClick = (id) => {
+    setArchiveConfirmModal({ show: true, documentId: id, action: 'archive' });
+  };
 
+  const handleUnarchiveClick = (id) => {
+    setArchiveConfirmModal({ show: true, documentId: id, action: 'unarchive' });
+  };
+
+  const archiveDocument = async (id) => {
     try {
-      await documentService.deleteDocument(id);
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
-      showNotification('Document deleted successfully', 'success');
+      await documentService.archiveDocument(id);
+      showNotification('Document archived successfully', 'success');
+      setArchiveConfirmModal({ show: false, documentId: null, action: null });
+      // Reload data to refresh the view
+      loadData(selectedFolder);
     } catch (error) {
-      showNotification('Error deleting document', 'error');
+      showNotification('Error archiving document', 'error');
+      setArchiveConfirmModal({ show: false, documentId: null, action: null });
+    }
+  };
+
+  const unarchiveDocument = async (id) => {
+    try {
+      await documentService.unarchiveDocument(id);
+      showNotification('Document unarchived successfully', 'success');
+      setArchiveConfirmModal({ show: false, documentId: null, action: null });
+      // Reload data to refresh the view
+      loadData(selectedFolder);
+    } catch (error) {
+      showNotification('Error unarchiving document', 'error');
+      setArchiveConfirmModal({ show: false, documentId: null, action: null });
+    }
+  };
+
+  const handleConfirmArchive = () => {
+    if (archiveConfirmModal.action === 'archive') {
+      archiveDocument(archiveConfirmModal.documentId);
+    } else if (archiveConfirmModal.action === 'unarchive') {
+      unarchiveDocument(archiveConfirmModal.documentId);
     }
   };
 
@@ -319,7 +371,11 @@ export default function FunctionalDocumentManager() {
             {foldersWithCounts.map(folder => (
               <div key={folder.id} className="group relative">
                 <div
-                  onClick={() => setSelectedFolder(folder.id)}
+                  onClick={() => {
+                    setSelectedFolder(folder.id);
+                    // Reload data when switching folders to get correct archived status
+                    loadData(folder.id);
+                  }}
                   className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 cursor-pointer ${
                     selectedFolder === folder.id
                       ? 'bg-blue-50 text-blue-700 shadow-sm'
@@ -329,6 +385,7 @@ export default function FunctionalDocumentManager() {
                   <div className="flex items-center space-x-3">
                     {folder.name === 'All Documents' ? <FileText className="h-5 w-5" /> : 
                      folder.name === 'Starred' ? <Star className="h-5 w-5" /> : 
+                     folder.name === 'Archived' ? <Archive className="h-5 w-5" /> :
                      <Folder className="h-5 w-5" />}
                     {!sidebarCollapsed && (
                       <span className="font-medium">{folder.name}</span>
@@ -562,13 +619,23 @@ export default function FunctionalDocumentManager() {
                          <Eye className="h-4 w-4" />
                        </button>
                     </div>
-                    <button
-                      onClick={() => deleteDocument(doc.id)}
-                      className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {folders.find(f => f.id === selectedFolder)?.name === 'Archived' ? (
+                      <button
+                        onClick={() => handleUnarchiveClick(doc.id)}
+                        className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                        title="Unarchive"
+                      >
+                        <ArchiveRestore className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleArchiveClick(doc.id)}
+                        className="p-2 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors"
+                        title="Archive"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -626,12 +693,23 @@ export default function FunctionalDocumentManager() {
                            >
                              <Eye className="h-4 w-4" />
                            </button>
-                          <button
-                            onClick={() => deleteDocument(doc.id)}
-                            className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {folders.find(f => f.id === selectedFolder)?.name === 'Archived' ? (
+                            <button
+                              onClick={() => unarchiveDocument(doc.id)}
+                              className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                              title="Unarchive"
+                            >
+                              <ArchiveRestore className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => archiveDocument(doc.id)}
+                              className="p-2 rounded-lg hover:bg-orange-100 text-orange-600 transition-colors"
+                              title="Archive"
+                            >
+                              <Archive className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -779,6 +857,58 @@ export default function FunctionalDocumentManager() {
            </div>
          </div>
        )}
+
+      {/* Archive Confirmation Modal */}
+      {archiveConfirmModal.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <div className="flex items-center space-x-4 mb-4">
+              {archiveConfirmModal.action === 'archive' ? (
+                <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Archive className="h-6 w-6 text-orange-600" />
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <ArchiveRestore className="h-6 w-6 text-green-600" />
+                </div>
+              )}
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {archiveConfirmModal.action === 'archive' ? 'Archive Document' : 'Unarchive Document'}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {archiveConfirmModal.action === 'archive' 
+                    ? 'Are you sure you want to archive this document?'
+                    : 'Are you sure you want to unarchive this document?'}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-6">
+              {archiveConfirmModal.action === 'archive'
+                ? 'The document will be moved to the Archived folder and hidden from regular views. You can unarchive it later if needed.'
+                : 'The document will be restored and visible in its original folder.'}
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setArchiveConfirmModal({ show: false, documentId: null, action: null })}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmArchive}
+                className={`px-4 py-2 rounded-lg text-white transition-colors ${
+                  archiveConfirmModal.action === 'archive'
+                    ? 'bg-orange-600 hover:bg-orange-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {archiveConfirmModal.action === 'archive' ? 'Archive' : 'Unarchive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
        {/* Toast Notifications */}
        {notification && (

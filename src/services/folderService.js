@@ -17,6 +17,7 @@ export const folderService = {
         const defaultFolders = [
           { name: 'All Documents', is_default: true, editable: false },
           { name: 'Starred', is_default: true, editable: false },
+          { name: 'Archived', is_default: true, editable: false },
           { name: 'General', is_default: true, editable: true }
         ];
         
@@ -32,12 +33,14 @@ export const folderService = {
       // Ensure we have the default folders
       const hasAllDocuments = data.some(folder => folder.name === 'All Documents');
       const hasStarred = data.some(folder => folder.name === 'Starred');
+      const hasArchived = data.some(folder => folder.name === 'Archived');
       const hasGeneral = data.some(folder => folder.name === 'General');
       
-      if (!hasAllDocuments || !hasStarred || !hasGeneral) {
+      if (!hasAllDocuments || !hasStarred || !hasArchived || !hasGeneral) {
         const missingFolders = [];
         if (!hasAllDocuments) missingFolders.push({ name: 'All Documents', is_default: true, editable: false });
         if (!hasStarred) missingFolders.push({ name: 'Starred', is_default: true, editable: false });
+        if (!hasArchived) missingFolders.push({ name: 'Archived', is_default: true, editable: false });
         if (!hasGeneral) missingFolders.push({ name: 'General', is_default: true, editable: true });
         
         const { data: insertedFolders, error: insertError } = await supabase
@@ -181,7 +184,8 @@ export const folderService = {
       if (folderId === 'all') {
         const { count: totalCount, error } = await supabase
           .from('documents')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .eq('archived', false);
         
         if (error) throw error;
         count = totalCount || 0;
@@ -189,15 +193,25 @@ export const folderService = {
         const { count: starredCount, error } = await supabase
           .from('documents')
           .select('*', { count: 'exact', head: true })
-          .eq('starred', true);
+          .eq('starred', true)
+          .eq('archived', false);
         
         if (error) throw error;
         count = starredCount || 0;
+      } else if (folderId === 'archived') {
+        const { count: archivedCount, error } = await supabase
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('archived', true);
+        
+        if (error) throw error;
+        count = archivedCount || 0;
       } else {
         const { count: folderCount, error } = await supabase
           .from('documents')
           .select('*', { count: 'exact', head: true })
-          .eq('folder_id', folderId);
+          .eq('folder_id', folderId)
+          .eq('archived', false);
         
         if (error) throw error;
         count = folderCount || 0;
