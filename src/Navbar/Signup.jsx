@@ -187,9 +187,14 @@ const Signup = () => {
       return;
     }
     // Enforce '+63' followed by exactly 10 digits
-    const phoneDigits = (phone.startsWith("+63") ? phone.slice(3) : phone).replace(/\D/g, "");
-    if (!phone.startsWith("+63") || phoneDigits.length !== 10) {
-      setError("Phone number must be +63 followed by 10 digits");
+    if (!phone.startsWith("+63")) {
+      setError("Phone number must start with +63");
+      setShowModal(true);
+      return;
+    }
+    const phoneDigits = phone.slice(3).replace(/\D/g, "");
+    if (phoneDigits.length !== 10) {
+      setError("Phone number must be +63 followed by exactly 10 digits");
       setShowModal(true);
       return;
     }
@@ -281,6 +286,7 @@ const Signup = () => {
           id_number: idNumber,
           front_id_url: frontIdUrl,
           back_id_url: backIdUrl,
+          last_active: new Date().toISOString(), // Set initial last_active on user creation
         },
       ]);
 
@@ -524,10 +530,9 @@ const Signup = () => {
                   onChange={handlePhoneChange}
                   placeholder="+63XXXXXXXXXX"
                   inputMode="numeric"
-                  pattern="[0-9]*"
                   maxLength={13}
+                  onInvalid={(e) => e.preventDefault()}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
-                  required
                 />
               </div>
 

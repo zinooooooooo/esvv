@@ -13,7 +13,9 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { createClient } from "@supabase/supabase-js";
+import { triggerInactivityManagement } from "../services/userActivityService";
 
 const supabase = createClient(
   "https://eshktejqytwxwnpnimvq.supabase.co",
@@ -37,6 +39,8 @@ const UserManagement = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmTitle, setConfirmTitle] = useState("");
+  const [isManagingInactivity, setIsManagingInactivity] = useState(false);
+  const [inactivityResult, setInactivityResult] = useState(null);
 
   const fetchUsers = async () => {
     const { data, error } = await supabase.from("profiles").select("*").eq("archived", false);
@@ -100,6 +104,7 @@ const UserManagement = () => {
           email: form.email,
           role: form.role,
           created_at: new Date().toISOString(),
+          last_active: new Date().toISOString(), // Set initial last_active on user creation
         },
       ]);
 
@@ -198,6 +203,63 @@ const UserManagement = () => {
     };
   }, [showConfirmModal]);
 
+  const handleManageInactivity = async () => {
+    setIsManagingInactivity(true);
+    setInactivityResult(null);
+    try {
+      const result = await triggerInactivityManagement();
+      if (result && result.length > 0) {
+        const data = result[0];
+        setInactivityResult({
+          archived: data.archived_count || 0,
+          deleted: data.deleted_count || 0,
+        });
+        // Refresh the user list
+        if (showArchived) {
+          fetchArchivedUsers();
+        } else {
+          fetchUsers();
+        }
+      }
+    } catch (error) {
+      console.error("Error managing inactivity:", error);
+      setInactivityResult({ error: "Failed to manage inactive users" });
+    } finally {
+      setIsManagingInactivity(false);
+    }
+  };
+
+  const getDaysInactive = (user) => {
+    if (!user.last_active && !user.created_at) return null;
+    const lastActive = user.last_active ? new Date(user.last_active) : new Date(user.created_at);
+    const now = new Date();
+    const diffTime = Math.abs(now - lastActive);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getInactivityStatus = (daysInactive) => {
+    if (daysInactive === null) return { label: "Unknown", color: "gray" };
+    if (daysInactive >= 30) return { label: "Active", color: "green" };
+    if (daysInactive >= 20) return { label: "Over 20 days", color: "orange" };
+    if (daysInactive >= 10) return { label: "Over 10 days", color: "yellow" };
+    return { label: "Active", color: "green" };
+  };
+
+  const formatLastActive = (lastActive, created_at) => {
+    if (!lastActive && !created_at) return "Never";
+    const date = lastActive ? new Date(lastActive) : new Date(created_at);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
+
   const filteredUsers = users.filter((user) =>
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -216,7 +278,7 @@ const UserManagement = () => {
           </p>
         </div>
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 flex-wrap">
           <Button
             variant="contained"
             onClick={() => setShowForm(!showForm)}
@@ -264,7 +326,51 @@ const UserManagement = () => {
           >
             {showArchived ? "View Active Users" : "View Archived Users"}
           </Button>
+
+          <Button
+            variant="outlined"
+            onClick={handleManageInactivity}
+            disabled={isManagingInactivity}
+            sx={{
+              borderColor: "#10b981",
+              color: "#10b981",
+              borderRadius: "12px",
+              padding: "12px 24px",
+              textTransform: "none",
+              fontSize: "16px",
+              fontWeight: 600,
+              "&:hover": {
+                borderColor: "#059669",
+                backgroundColor: "#d1fae5",
+                transform: "translateY(-2px)",
+              },
+              "&:disabled": {
+                borderColor: "#9ca3af",
+                color: "#9ca3af",
+              },
+              transition: "all 0.3s ease",
+            }}
+            startIcon={<RefreshIcon />}
+          >
+            {isManagingInactivity ? "Processing..." : "Manage Inactive Users"}
+          </Button>
         </div>
+
+        {inactivityResult && (
+          <div className={`mb-4 p-4 rounded-lg ${
+            inactivityResult.error 
+              ? "bg-red-50 border border-red-200" 
+              : "bg-green-50 border border-green-200"
+          }`}>
+            {inactivityResult.error ? (
+              <p className="text-red-700">{inactivityResult.error}</p>
+            ) : (
+              <p className="text-green-700">
+                Inactivity management completed: {inactivityResult.archived} user(s) archived, {inactivityResult.deleted} user(s) deleted.
+              </p>
+            )}
+          </div>
+        )}
 
         {showForm && (
           <div className="bg-white p-8 rounded-2xl shadow-2xl mb-8 border border-gray-200">
@@ -397,6 +503,8 @@ const UserManagement = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Staff Member</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Last Active</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -432,6 +540,35 @@ const UserManagement = () => {
                           <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                             {user.role === 'user' ? 'Resident' : user.role}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{formatLastActive(user.last_active, user.created_at)}</span>
+                            {user.last_active && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(user.last_active).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {(() => {
+                            const daysInactive = getDaysInactive(user);
+                            const status = getInactivityStatus(daysInactive);
+                            const colorClasses = {
+                              green: "bg-green-100 text-green-800",
+                              yellow: "bg-yellow-100 text-yellow-800",
+                              orange: "bg-orange-100 text-orange-800",
+                              red: "bg-red-100 text-red-800",
+                              gray: "bg-gray-100 text-gray-800",
+                            };
+                            return (
+                              <span className={`px-3 py-1 text-xs font-medium rounded-full ${colorClasses[status.color]}`}>
+                                {status.label}
+                                {daysInactive !== null && ` (${daysInactive}d)`}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           {showArchived ? (

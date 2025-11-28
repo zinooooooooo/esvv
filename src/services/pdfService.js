@@ -75,7 +75,7 @@ export const generateAppointmentPDF = (appointment) => {
 
   // Right side: Date and Patient
   addText(`Date: ${headerAppointmentDate}`, pageWidth - 15, 34, { fontSize: 10, align: 'right', color: secondaryColor });
-  addText(`Appointee: ${fullName}`, pageWidth - 15, 40, { fontSize: 10, align: 'right', color: secondaryColor });
+ 
   
   // Personal Information Section
   const sectionY = 58;

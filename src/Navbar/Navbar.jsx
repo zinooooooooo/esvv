@@ -7,6 +7,7 @@ import AppointmentPDFPreview from '../components/AppointmentPDFPreview';
 import { downloadAppointmentPDF } from '../services/pdfService';
 import useSessionTimeout from '../hooks/useSessionTimeout';
 import SessionTimeoutWarning from '../components/SessionTimeoutWarning';
+import { updateUserActivity } from '../services/userActivityService';
 
 const Modal = ({ isOpen, onClose, type, title, message }) => {
   if (!isOpen) return null;
@@ -216,6 +217,8 @@ export default function Navbar() {
         sessionStorage.setItem('explicitLoginThisTab', '1');
       } catch (_) {}
       setUser(user);
+      // Update user activity on login
+      await updateUserActivity(user.id);
       fetchUserProfile(user.id, true);
       setShowLogin(false);
     } catch (err) {
@@ -234,6 +237,8 @@ export default function Navbar() {
     }
   
     setLoadingAppointments(true);
+    // Update user activity when fetching appointments
+    updateUserActivity(user.id);
     try {
       const userEmail = user.email;
       console.log('Fetching appointments for email:', userEmail);
@@ -790,6 +795,8 @@ export default function Navbar() {
       if (session?.user) {
         console.log('Auth state change - setting user:', session.user);
         setUser(session.user);
+        // Update user activity when session is restored
+        updateUserActivity(session.user.id);
         fetchUserProfile(session.user.id, false);
       } else {
         console.log('Auth state change - clearing user');
@@ -810,10 +817,29 @@ export default function Navbar() {
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      // Update user activity when fetching notifications
+      updateUserActivity(user.id);
     } else {
       setNotifications([]);
       setUnreadCount(0);
     }
+  }, [user]);
+
+  // Periodic activity update - update every 5 minutes while user is active
+  useEffect(() => {
+    if (!user) return;
+
+    // Update immediately
+    updateUserActivity(user.id);
+
+    // Set up interval to update every 5 minutes
+    const activityInterval = setInterval(() => {
+      updateUserActivity(user.id);
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      clearInterval(activityInterval);
+    };
   }, [user]);
 
   // Set up real-time subscription for notifications
