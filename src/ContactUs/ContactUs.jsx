@@ -14,11 +14,11 @@ const ContactUs = () => {
         className="relative w-full h-[400px] bg-cover bg-center flex items-center justify-center"
         style={{
           backgroundImage: 'url("https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh1_L724mnPAbAnwliSIkXThX_hscxbTkErJDwmgHHhOwFW1hsp-DCzwELGQD_0HXUEEAJG89kA2M_He-q8eJCaGzOPU0M9f_jFu8ckQlc3LyKwq7CyqvUiZHQJMWn0aplxyZT4DZl1Xnw/s640/sv1.JPG")', // EDITABLE: Replace with your municipality image URL
-          backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(80, 80, 80, 0.5)' // EDITABLE: Adjust overlay color/opacity
         }}
         data-editable="header-background"
       >
+        {/* Overlay to lighten the image */}
+        <div className="absolute inset-0 bg-white opacity-15"></div>
         <div className="text-center text-white z-10 px-4 flex flex-col items-center justify-center">
           {/* EDITABLE: Logos */}
           <div 
@@ -151,7 +151,7 @@ Difficult travel between Vigan and its barrios during the rainy season led to th
                   <Mail className="text-blue-600 mt-1" size={20} />
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">Email</h3>
-                    <p className="text-gray-700">info@progress.gov</p>
+                    <p className="text-gray-700">mswdo.adm1@gmail.com</p>
                   </div>
                 </div>
               </div>

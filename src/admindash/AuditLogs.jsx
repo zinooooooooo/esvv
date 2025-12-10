@@ -71,7 +71,9 @@ const AuditLog = () => {
       }));
 
       setLogs(combinedData);
-      const userTypes = [...new Set(combinedData.map(log => log.user_type).filter(Boolean))];
+      const userTypes = [...new Set(combinedData.map(log => log.user_type).filter(Boolean))]
+        .filter(type => type !== 'user') // Remove "user" option
+        .map(type => type === 'citizen' ? 'resident' : type); // Change "citizen" to "resident"
       const rawActions = combinedData.map(log => log.action).filter(Boolean);
       const actionSet = new Set(rawActions);
       // Add grouped options if present in data
@@ -104,7 +106,12 @@ const AuditLog = () => {
     }
 
     if (filters.userType) {
-      filtered = filtered.filter(log => log.user_type === filters.userType);
+      // When filtering by "resident", also match "citizen" from database
+      if (filters.userType === 'resident') {
+        filtered = filtered.filter(log => log.user_type === 'resident' || log.user_type === 'citizen');
+      } else {
+        filtered = filtered.filter(log => log.user_type === filters.userType);
+      }
     }
 
     if (filters.action) {
@@ -265,8 +272,8 @@ const AuditLog = () => {
     const colors = {
       'admin': 'bg-red-100 text-red-900',
       'manager': 'bg-orange-100 text-orange-900',
-      'user': 'bg-green-100 text-green-900',
-      'citizen': 'bg-green-100 text-green-900',
+      'resident': 'bg-green-100 text-green-900',
+      'resident': 'bg-green-100 text-green-900',
       'guest': 'bg-gray-100 text-gray-900'
     };
     return colors[userType?.toLowerCase()] || 'bg-indigo-100 text-indigo-900';
@@ -455,7 +462,7 @@ const AuditLog = () => {
                       >
                         <div className="flex items-center space-x-1">
                           <User className="w-4 h-4" />
-                          <span>User</span>
+                          <span>Resident</span>
                           <ChevronsUpDown className={`w-4 h-4 ml-1 ${sortConfig.key === 'profiles.full_name' ? 'text-gray-700' : 'text-gray-400'}`} />
                         </div>
                       </th>
@@ -504,8 +511,8 @@ const AuditLog = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(log.user_type)}`}>
-                            {log.user_type === 'user' ? 'Resident' : (log.user_type || 'Unknown')}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(log.user_type === 'citizen' ? 'resident' : log.user_type)}`}>
+                            {log.user_type === 'user' || log.user_type === 'citizen' ? 'Resident' : (log.user_type || 'Unknown')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

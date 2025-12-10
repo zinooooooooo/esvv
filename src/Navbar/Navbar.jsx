@@ -8,6 +8,7 @@ import { downloadAppointmentPDF } from '../services/pdfService';
 import useSessionTimeout from '../hooks/useSessionTimeout';
 import SessionTimeoutWarning from '../components/SessionTimeoutWarning';
 import { updateUserActivity } from '../services/userActivityService';
+import PrintableFormsModal from '../PrintableForms/PrintableForms';
 
 const Modal = ({ isOpen, onClose, type, title, message }) => {
   if (!isOpen) return null;
@@ -82,7 +83,9 @@ export default function Navbar() {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showPrintableFormsModal, setShowPrintableFormsModal] = useState(false);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [loadingEditProfile, setLoadingEditProfile] = useState(false);
   const [frontIdEditFile, setFrontIdEditFile] = useState(null);
   const [backIdEditFile, setBackIdEditFile] = useState(null);
   const [frontPreviewUrl, setFrontPreviewUrl] = useState('');
@@ -347,6 +350,9 @@ export default function Navbar() {
   };
 
   const openEditProfile = async () => {
+    setLoadingEditProfile(true);
+    setShowEditProfileModal(true);
+    setShowProfileDropdown(false);
     try {
       const { data: authData } = await supabase.auth.getUser();
       const currentUser = authData?.user;
@@ -374,10 +380,11 @@ export default function Navbar() {
       setBackIdEditFile(null);
       setFrontPreviewUrl(profileData.front_id_url || '');
       setBackPreviewUrl(profileData.back_id_url || '');
-      setShowEditProfileModal(true);
-      setShowProfileDropdown(false);
     } catch (err) {
       setModal({ isOpen: true, type: 'error', title: 'Profile Error', message: err.message || 'Failed to load profile.' });
+      setShowEditProfileModal(false);
+    } finally {
+      setLoadingEditProfile(false);
     }
   };
 
@@ -976,8 +983,18 @@ export default function Navbar() {
                           </svg>
                           Appointment Status
                         </button>
-                      
-                        
+                        <button
+                          onClick={() => {
+                            setShowProfileDropdown(false);
+                            setShowPrintableFormsModal(true);
+                          }}
+                          className="group flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+                        >
+                          <svg className="w-4 h-4 mr-3 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          Printable Forms
+                        </button>
                       </div>
                       <div className="border-t border-gray-100 py-2">
                         <button
@@ -1453,6 +1470,12 @@ export default function Navbar() {
               <p className="text-gray-600 text-sm">Update your personal information and ID files.</p>
             </div>
 
+            {loadingEditProfile ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading profile...</span>
+              </div>
+            ) : (
             <form onSubmit={submitEditProfile} className="space-y-5">
               <div className="bg-gradient-to-br from-gray-50 to-indigo-50/30 p-4 rounded-2xl border border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-3">Account Information</h3>
@@ -1579,6 +1602,7 @@ export default function Navbar() {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}
@@ -1903,6 +1927,11 @@ export default function Navbar() {
       />
 
       {/* Session Timeout Warning */}
+      <PrintableFormsModal
+        isOpen={showPrintableFormsModal}
+        onClose={() => setShowPrintableFormsModal(false)}
+      />
+
       <SessionTimeoutWarning
         isVisible={showSessionWarning}
         timeLeft={formatSessionTime}
