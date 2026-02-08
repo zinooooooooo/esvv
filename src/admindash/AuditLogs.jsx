@@ -273,7 +273,6 @@ const AuditLog = () => {
       'admin': 'bg-red-100 text-red-900',
       'manager': 'bg-orange-100 text-orange-900',
       'resident': 'bg-green-100 text-green-900',
-      'resident': 'bg-green-100 text-green-900',
       'guest': 'bg-gray-100 text-gray-900'
     };
     return colors[userType?.toLowerCase()] || 'bg-indigo-100 text-indigo-900';

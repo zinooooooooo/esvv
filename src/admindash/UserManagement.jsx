@@ -245,13 +245,10 @@ const UserManagement = () => {
     }
     if (daysInactive === null) return { label: "Unknown", color: "gray" };
     if (daysInactive >= 200) return { label: "Over 200 days", color: "red" };
-<<<<<<< HEAD
     if (daysInactive >= 100) return { label: "Over 100 days", color: "orange" };
     if (daysInactive >= 50) return { label: "Over 50 days", color: "yellow" };
-=======
     if (daysInactive >= 20) return { label: "Over 20 days", color: "orange" };
     if (daysInactive >= 10) return { label: "Over 10 days", color: "yellow" };
->>>>>>> dc4d4bf (update message)
     return { label: "Active", color: "green" };
   };
 
