@@ -5,7 +5,7 @@ import senior from '../assets/senior.jpg';
 import pwd from '../assets/pwd.jpeg';
 import solo from '../assets/solo.png';
 
-const HeroCarousel = () => {
+const Hero = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
@@ -159,4 +159,4 @@ const HeroCarousel = () => {
   );
 };
 
-export default HeroCarousel;
+export default Hero;

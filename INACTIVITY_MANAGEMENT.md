@@ -1,12 +1,21 @@
 # Inactivity Management System
 
+<<<<<<< HEAD
 This document describes the inactivity management system implemented for the eSVMWDO application. The system automatically archives users inactive for 200 days and deletes users inactive for 200+ days. **Staff and admin users are exempt** and are never archived or deleted for inactivity.
+=======
+This document describes the inactivity management system implemented for the eSVMWDO application. The system automatically archives users inactive for 20 days and deletes citizen users inactive for 200+ days. Admin and staff users are excluded from deletion.
+>>>>>>> dc4d4bf (update message)
 
 ## Features
 
 - **Automatic Activity Tracking**: Tracks user's last active timestamp on login and key actions
+<<<<<<< HEAD
 - **Automatic Archival**: Users inactive for 200 days are automatically archived (staff/admin exempt)
 - **Automatic Deletion**: Users inactive for 200+ days are permanently deleted (staff/admin exempt)
+=======
+- **Automatic Archival**: Users inactive for 20 days are automatically archived
+- **Automatic Deletion**: Citizen users inactive for 200+ days are permanently deleted (admin and staff users are protected from deletion)
+>>>>>>> dc4d4bf (update message)
 - **Activity Logging**: All archival and deletion actions are logged with detailed information
 - **Manual Trigger**: Admins can manually trigger inactivity management from the User Management page
 - **Visual Indicators**: User Management page displays last active time and inactivity status
@@ -62,13 +71,23 @@ The system tracks user activity in the following scenarios:
 
 The `manage_inactive_users()` function runs daily (or manually) and:
 
+<<<<<<< HEAD
 1. **Archives Users (200 days inactive)**:
    - Finds users with `last_active` between 200–210 days ago (excluding staff and admin)
+=======
+1. **Archives Users (20 days inactive)**:
+   - Finds users with `last_active` between 20-200 days ago
+>>>>>>> dc4d4bf (update message)
    - Sets `archived = TRUE`
    - Logs the action in `user_activity_logs`
 
 2. **Deletes Users (200+ days inactive)**:
+<<<<<<< HEAD
    - Finds archived users with `last_active` older than 200 days (excluding staff and admin)
+=======
+   - Finds archived citizen users (role = 'user') with `last_active` older than 200 days
+   - Excludes admin and staff users from deletion (they are protected)
+>>>>>>> dc4d4bf (update message)
    - Logs the deletion action
    - Permanently deletes the user from `profiles` table
    - **Note**: To delete from `auth.users`, you may need to use Supabase Admin API
@@ -80,7 +99,11 @@ The `manage_inactive_users()` function runs daily (or manually) and:
 All archival and deletion actions are logged in the `user_activity_logs` table with:
 - User ID, email, and name
 - Action type (`archived` or `deleted`)
+<<<<<<< HEAD
 - Reason (`inactive_200_days`, `inactive_200_plus_days`, etc.)
+=======
+- Reason (`inactive_20_days`, `inactive_200_days`, etc.)
+>>>>>>> dc4d4bf (update message)
 - Days inactive
 - Timestamp of execution
 - Additional metadata (JSONB)
@@ -102,11 +125,18 @@ The User Management page (`UserManagement.jsx`) now includes:
 
 1. **Last Active Column**: Shows when the user was last active
 2. **Inactivity Status**: Color-coded status badges:
+<<<<<<< HEAD
    - Gray (Exempt): Staff and admin—not subject to inactivity management
    - Green: Active (< 50 days)
    - Yellow: Over 50 days
    - Orange: Over 100 days
    - Red: Over 200 days (will be archived/deleted)
+=======
+   - Green: Active (< 10 days)
+   - Yellow: Over 10 days
+   - Orange: Over 20 days (will be archived)
+   - Red: Over 200 days (will be deleted, citizen accounts only)
+>>>>>>> dc4d4bf (update message)
 3. **Manual Trigger Button**: "Manage Inactive Users" button to manually run the process
 4. **Result Display**: Shows results after running inactivity management
 
@@ -146,7 +176,11 @@ Use the provided view to see inactive users:
 
 ```sql
 SELECT * FROM inactive_users_summary
+<<<<<<< HEAD
 WHERE inactivity_status IN ('over_200_days')
+=======
+WHERE inactivity_status IN ('over_20_days', 'over_200_days')
+>>>>>>> dc4d4bf (update message)
 ORDER BY days_inactive DESC;
 ```
 
@@ -187,8 +221,14 @@ To change the archival/deletion thresholds, modify the function in `inactivity-m
 -- Change 200 days archival threshold
 AND last_active < NOW() - INTERVAL '200 days'
 
+<<<<<<< HEAD
 -- Change 210 days deletion threshold
 AND last_active < NOW() - INTERVAL '210 days'
+=======
+-- Change 200 days to 180 days (example)
+AND last_active < NOW() - INTERVAL '180 days'
+AND role = 'user'  -- Remember to include role filter for citizen accounts only
+>>>>>>> dc4d4bf (update message)
 ```
 
 ### Adjusting Update Frequency

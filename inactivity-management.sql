@@ -17,7 +17,11 @@ CREATE TABLE IF NOT EXISTS user_activity_logs (
   user_email TEXT,
   user_name TEXT,
   action TEXT NOT NULL, -- 'archived', 'deleted'
+<<<<<<< HEAD
   reason TEXT NOT NULL, -- 'inactive_200_days', 'inactive_200_plus_days'
+=======
+  reason TEXT NOT NULL, -- 'inactive_20_days', 'inactive_200_days'
+>>>>>>> dc4d4bf (update message)
   days_inactive INTEGER NOT NULL,
   executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   metadata JSONB -- Store additional information like previous status, etc.
@@ -39,8 +43,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create function to manage inactive users
+<<<<<<< HEAD
 -- This function archives users inactive for 200 days and deletes users inactive for 200+ days.
 -- Staff and admin roles are excluded from inactivity management (never archived or deleted).
+=======
+-- This function archives users inactive for 20 days and deletes citizen users inactive for 200+ days
+-- Admin and staff users are excluded from deletion
+>>>>>>> dc4d4bf (update message)
 CREATE OR REPLACE FUNCTION manage_inactive_users()
 RETURNS TABLE (
   archived_count INTEGER,
@@ -93,8 +102,14 @@ BEGIN
     v_archived_users := array_append(v_archived_users, v_user_record.id);
   END LOOP;
   
+<<<<<<< HEAD
   -- Delete users inactive for 210+ days (already archived from 200-day threshold)
   -- Only delete users that are already archived (safety check). Exclude staff and admin.
+=======
+  -- Delete users inactive for 200+ days
+  -- Only delete users that are already archived (safety check)
+  -- Only delete citizen accounts (role = 'user'), exclude admin and staff
+>>>>>>> dc4d4bf (update message)
   FOR v_user_record IN
     SELECT 
       id,
@@ -104,8 +119,13 @@ BEGIN
     FROM profiles
     WHERE archived = TRUE
       AND last_active IS NOT NULL
+<<<<<<< HEAD
       AND last_active < NOW() - INTERVAL '210 days'
       AND COALESCE(role, '') NOT IN ('staff', 'admin')
+=======
+      AND last_active < NOW() - INTERVAL '200 days'
+      AND role = 'user'  -- Only delete citizen accounts, exclude admin and staff
+>>>>>>> dc4d4bf (update message)
   LOOP
     -- Log the deletion action before deleting
     INSERT INTO user_activity_logs (user_id, user_email, user_name, action, reason, days_inactive)
@@ -114,7 +134,11 @@ BEGIN
       v_user_record.email,
       v_user_record.full_name,
       'deleted',
+<<<<<<< HEAD
       'inactive_200_plus_days',
+=======
+      'inactive_200_days',
+>>>>>>> dc4d4bf (update message)
       FLOOR(v_user_record.days_inactive)::INTEGER
     );
     
@@ -127,8 +151,14 @@ BEGIN
     v_deleted_users := array_append(v_deleted_users, v_user_record.id);
   END LOOP;
   
+<<<<<<< HEAD
   -- Also handle users with NULL last_active that are older than 210 days
   -- These are users who never had their activity tracked. Exclude staff and admin.
+=======
+  -- Also handle users with NULL last_active that are older than 200 days
+  -- These are users who never had their activity tracked
+  -- Only delete citizen accounts (role = 'user'), exclude admin and staff
+>>>>>>> dc4d4bf (update message)
   FOR v_user_record IN
     SELECT 
       id,
@@ -138,8 +168,13 @@ BEGIN
     FROM profiles
     WHERE archived = TRUE
       AND last_active IS NULL
+<<<<<<< HEAD
       AND created_at < NOW() - INTERVAL '210 days'
       AND COALESCE(role, '') NOT IN ('staff', 'admin')
+=======
+      AND created_at < NOW() - INTERVAL '200 days'
+      AND role = 'user'  -- Only delete citizen accounts, exclude admin and staff
+>>>>>>> dc4d4bf (update message)
   LOOP
     -- Log the deletion action
     INSERT INTO user_activity_logs (user_id, user_email, user_name, action, reason, days_inactive)
@@ -148,7 +183,11 @@ BEGIN
       v_user_record.email,
       v_user_record.full_name,
       'deleted',
+<<<<<<< HEAD
       'inactive_200_plus_days_no_activity',
+=======
+      'inactive_200_days_no_activity',
+>>>>>>> dc4d4bf (update message)
       FLOOR(v_user_record.days_inactive)::INTEGER
     );
     
@@ -196,6 +235,10 @@ SELECT
   CASE
     WHEN last_active IS NULL THEN 'never_active'
     WHEN last_active < NOW() - INTERVAL '200 days' THEN 'over_200_days'
+<<<<<<< HEAD
+=======
+    WHEN last_active < NOW() - INTERVAL '20 days' THEN 'over_20_days'
+>>>>>>> dc4d4bf (update message)
     ELSE 'active'
   END AS inactivity_status
 FROM profiles
